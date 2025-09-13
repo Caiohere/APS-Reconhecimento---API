@@ -1,24 +1,28 @@
-# Usar uma imagem oficial do Python como base
 FROM python:3.11-slim
-
-# Definir o diretório de trabalho dentro do contêiner
 WORKDIR /app
 
-# Instalar as dependências do sistema operacional
 RUN apt-get update && apt-get install -y build-essential cmake
 
-# --- ADICIONE ESTA LINHA ---
-# Força a compilação a usar apenas um núcleo para economizar RAM
 ENV MAX_JOBS=1
 
-# Copiar o arquivo de requisitos
 COPY requirements.txt requirements.txt
 
-# Instalar as bibliotecas Python
+# --- ADICIONE ESTAS LINHAS PARA CRIAR O SWAP ---
+# Aloca um arquivo de 2GB para ser usado como memória virtual
+RUN fallocate -l 2G /swapfile
+# Define as permissões corretas
+RUN chmod 600 /swapfile
+# Formata o arquivo como swap
+RUN mkswap /swapfile
+# Ativa o swap
+RUN swapon /swapfile
+# ---------------------------------------------------
+
+# Agora, com o swap ativo, instala as dependências
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar todo o resto do código do seu projeto
-COPY . .
+# Desativa o swap depois de usar para limpar
+RUN swapoff /swapfile
 
-# Comando para iniciar a aplicação
+COPY . .
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "10000"]
